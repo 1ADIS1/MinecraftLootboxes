@@ -4,4 +4,4 @@ main: io.papermc.testplugin.ExamplePlugin
 description: An example plugin
 author: PaperMC
 website: https://papermc.io
-api-version: '26.2'
+api-version: '1.21.1'

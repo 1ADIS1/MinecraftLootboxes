@@ -1,0 +1,10 @@
+# Minecraft Lootboxes
+
+A minecraft web-app and server plugin for opening lootboxes and receiving items in-game.
+
+## Tools
+
+* Java 21
+* Papermc
+* Run-task
+* bukkit
