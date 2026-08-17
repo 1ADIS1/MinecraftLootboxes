@@ -1,0 +1,7 @@
+name: ExamplePlugin
+version: 1.0.0
+main: io.papermc.testplugin.ExamplePlugin
+description: An example plugin
+author: PaperMC
+website: https://papermc.io
+api-version: '26.2'
