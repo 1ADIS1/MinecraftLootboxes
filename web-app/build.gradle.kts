@@ -4,7 +4,7 @@ plugins {
     id("io.spring.dependency-management") version "1.1.7"
 }
 
-group = "com.example"
+group = "com.application"
 version = "0.0.1-SNAPSHOT"
 
 java {
@@ -19,6 +19,8 @@ repositories {
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
