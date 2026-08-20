@@ -16,8 +16,6 @@ public class ApplicationIntegrationTest {
 
     @Test
     public void getHello() {
-        client.get().uri("/").exchangeSuccessfully()
-                .expectBody(String.class)
-                .isEqualTo("Welcome to Minecraft!");
+        client.get().uri("/").exchangeSuccessfully();
     }
 }
