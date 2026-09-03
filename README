@@ -1,6 +1,7 @@
 # Minecraft Lootboxes
 
-A minecraft web-com and server plugin for opening lootboxes and receiving items in-game.
+A minecraft website and server plugin for opening lootboxes and receiving items in-game. The website has database for users
+with link to their minecraft profiles. This allows users to open lootboxes on website and receive items in-game.
 
 ## Tools
 
@@ -8,3 +9,6 @@ A minecraft web-com and server plugin for opening lootboxes and receiving items 
 * Papermc
 * Run-task
 * bukkit
+* Hibernate
+* Spring boot
+* Hot reloading
