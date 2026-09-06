@@ -1,17 +1,25 @@
 package com.application;
 
+import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Random;
 
 @SpringBootApplication
 @RestController
@@ -25,15 +33,34 @@ public class Application {
         SpringApplication.run(Application.class, args);
     }
 
+    @PostMapping("/login")
+    public @ResponseBody String login(@RequestParam String login, @RequestParam String password, HttpSession session) {
+        User user = userRepository.findByLogin(login).orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.UNAUTHORIZED,
+                "Invalid login or password"
+        ));
+
+        if (!user.getPassword().equals(password)) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Invalid login or password"
+            );
+        }
+
+        session.setAttribute("userId", user.getId());
+
+        return "logged-in!";
+    }
+
     @PostMapping(path = "/add") // Map ONLY POST Requests
-    public @ResponseBody String addNewUser(@RequestParam String name
-            , @RequestParam String email) {
+    public @ResponseBody String addNewUser(@RequestParam String login
+            , @RequestParam String password) {
         // @ResponseBody means the returned String is the response, not a view name
         // @RequestParam means it is a parameter from the GET or POST request
 
         User n = new User();
-        n.setName(name);
-        n.setEmail(email);
+        n.setLogin(login);
+        n.setPassword(password);
         userRepository.save(n);
         return "Saved";
     }
@@ -45,16 +72,29 @@ public class Application {
     }
 
     @PostMapping("/open-case")
-    public String onCaseOpen() throws IOException, InterruptedException {
+    public String onCaseOpen(HttpSession session) throws IOException, InterruptedException {
         log.info("Case opened!");
 
-        HttpClient client = HttpClient.newHttpClient();
-        HttpRequest request =
-                HttpRequest.newBuilder().uri(URI.create("http://127.0.0.1:8081/give-item"))
-                        .POST(HttpRequest.BodyPublishers.noBody())
-                        .build();
+        Random random = new Random();
+        List<ArmorCase> values = List.of(ArmorCase.values());
+        ArmorCase reward = values.get(random.nextInt(values.size()));
 
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        User user = userRepository.findById((int) session.getAttribute("userId")).orElseThrow();
+
+        String body =
+                "login=" + URLEncoder.encode(user.getLogin(), StandardCharsets.UTF_8)
+                        + "&password=" + URLEncoder.encode(user.getPassword(), StandardCharsets.UTF_8)
+                        + "&material=" + Bukkit.
+                        + "&amount=1";
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("http://127.0.0.1:8081/give-item"))
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build();
+
+        HttpResponse<String> response = HttpClient.newHttpClient()
+                .send(request, HttpResponse.BodyHandlers.ofString());
 
         return response.body();
     }

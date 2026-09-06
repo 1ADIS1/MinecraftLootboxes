@@ -14,9 +14,47 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 
 public class ExamplePlugin extends JavaPlugin implements Listener {
     private HttpServer httpServer;
+
+    private static Map<String, String> parseForm(HttpExchange exchange) throws IOException {
+        String body = new String(
+                exchange.getRequestBody().readAllBytes(),
+                StandardCharsets.UTF_8
+        );
+
+        Map<String, String> values = new HashMap<>();
+
+        for (String pair : body.split("&")) {
+            String[] parts = pair.split("=", 2);
+
+            String name = URLDecoder.decode(parts[0], StandardCharsets.UTF_8);
+            String value = parts.length == 2
+                    ? URLDecoder.decode(parts[1], StandardCharsets.UTF_8)
+                    : "";
+
+            values.put(name, value);
+        }
+
+        return values;
+    }
+
+    private static void sendResponse(HttpExchange exchange, int status, String body) throws IOException {
+        byte[] response = body.getBytes(StandardCharsets.UTF_8);
+        exchange.getResponseHeaders().set("Content-Type", "text/plain; charset=UTF-8");
+        exchange.sendResponseHeaders(status, response.length);
+
+        try (var output = exchange.getResponseBody()) {
+            output.write(response);
+        } finally {
+            exchange.close();
+        }
+    }
 
     @Override
     public void onEnable() {
@@ -43,10 +81,36 @@ public class ExamplePlugin extends JavaPlugin implements Listener {
         event.getPlayer().sendMessage(Component.text("Hello, " + event.getPlayer().getName() + "!"));
     }
 
-    private void givePlayerItem(HttpExchange exchange) {
-        getLogger().info("Giving items to players!");
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            player.getInventory().addItem(new ItemStack(Material.DIAMOND, 1));
+    private void givePlayerItem(HttpExchange exchange) throws IOException {
+        if (!exchange.getRequestMethod().equalsIgnoreCase("POST")) {
+            sendResponse(exchange, 405, "POST required");
+            return;
         }
+
+        Map<String, String> form = parseForm(exchange);
+        String login = form.get("login");
+
+        if (login == null || login.isBlank()) {
+            sendResponse(exchange, 400, "Missing login");
+            return;
+        }
+
+        // The built-in HTTP server handles requests outside the Minecraft server
+        // thread, so all Bukkit API access must be scheduled on the server thread.
+        Bukkit.getScheduler().runTask(this, () -> {
+            Player player = Bukkit.getPlayerExact(login);
+
+            if (player == null) {
+                getLogger().warning("Couldn't find online player: " + login);
+                return;
+            }
+
+            Material.getMaterial("");
+
+            player.getInventory().addItem(new ItemStack(Material.LEATHER_CHESTPLATE, 1));
+            getLogger().info("Gave items to player " + login);
+        });
+
+        sendResponse(exchange, 202, "Case opened");
     }
 }

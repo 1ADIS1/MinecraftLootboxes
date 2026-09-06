@@ -5,20 +5,35 @@
     <meta content="text/html; charset=UTF-8" http-equiv="Content-Type"/>
 </head>
 <body>
+
 <p>Log into account </p>
-<label>
-    <input/>
-</label>
-<p></p>
-<label>
-    <input/>
-</label>
-<p></p>
+
 <form action="/add" method="post">
+
+    <div>
+        <label for="login">Login:</label>
+        <input id="login" name="login" required type="text">
+    </div>
+
+
+    <div>
+        <label for="password">Password:</label>
+        <input id="password" name="password" required type="text">
+    </div>
+
     <button type="submit">Sign-up</button>
+
+    <button
+            formaction="/login"
+            formmethod="post"
+            type="submit">
+        Log in
+    </button>
 </form>
+
 <form action="/open-case" method="post">
     <button type="submit">Open!</button>
 </form>
+
 </body>
 </html>
