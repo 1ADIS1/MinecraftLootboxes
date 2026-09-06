@@ -17,4 +17,5 @@ https://github.com/user-attachments/assets/db4245df-86ac-4693-b5ff-f9848c061aeb
 * bukkit
 * Hibernate
 * Spring boot
+* HTML/CSS/JS
 * Hot reloading
