@@ -18,6 +18,10 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class ExamplePlugin extends JavaPlugin implements Listener {
     private HttpServer httpServer;
@@ -87,7 +91,13 @@ public class ExamplePlugin extends JavaPlugin implements Listener {
             return;
         }
 
-        Map<String, String> form = parseForm(exchange);
+        Map<String, String> form;
+        try {
+            form = parseForm(exchange);
+        } catch (IllegalArgumentException e) {
+            sendResponse(exchange, 400, "Invalid form encoding");
+            return;
+        }
         String login = form.get("login");
 
         if (login == null || login.isBlank()) {
@@ -95,22 +105,50 @@ public class ExamplePlugin extends JavaPlugin implements Listener {
             return;
         }
 
-        // The built-in HTTP server handles requests outside the Minecraft server
-        // thread, so all Bukkit API access must be scheduled on the server thread.
-        Bukkit.getScheduler().runTask(this, () -> {
-            Player player = Bukkit.getPlayerExact(login);
+        String materialName = form.get("material");
+        Material material = materialName == null ? null : Material.getMaterial(materialName);
+        if (material == null || !material.isItem() || material.isAir()
+                || !"1".equals(form.get("amount"))) {
+            sendResponse(exchange, 400, "A valid material and amount=1 are required");
+            return;
+        }
 
-            if (player == null) {
-                getLogger().warning("Couldn't find online player: " + login);
-                return;
-            }
+        // Wait on the HTTP thread, never the Minecraft thread. Only report success
+        // after the main-thread inventory mutation has actually completed.
+        Future<Delivery> pending;
+        try {
+            pending = Bukkit.getScheduler().callSyncMethod(this, () -> deliver(login, material));
+        } catch (RuntimeException e) {
+            sendResponse(exchange, 503, "Plugin is stopping");
+            return;
+        }
+        try {
+            Delivery delivery = pending.get(5, TimeUnit.SECONDS);
+            sendResponse(exchange, delivery.status(), delivery.message());
+        } catch (TimeoutException e) {
+            pending.cancel(false);
+            sendResponse(exchange, 504, "Delivery confirmation timed out");
+        } catch (InterruptedException e) {
+            pending.cancel(false);
+            Thread.currentThread().interrupt();
+            sendResponse(exchange, 503, "Delivery interrupted");
+        } catch (ExecutionException e) {
+            getLogger().severe("Item delivery failed: " + e.getCause());
+            sendResponse(exchange, 500, "Delivery failed");
+        }
+    }
 
-            Material.getMaterial("");
+    private record Delivery(int status, String message) {}
 
-            player.getInventory().addItem(new ItemStack(Material.LEATHER_CHESTPLATE, 1));
-            getLogger().info("Gave items to player " + login);
-        });
-
-        sendResponse(exchange, 202, "Case opened");
+    private Delivery deliver(String login, Material material) {
+        Player player = Bukkit.getPlayerExact(login);
+        if (player == null || !player.isOnline()) return new Delivery(404, "Player is offline");
+        // All case rewards have amount 1. Reserving an empty storage slot avoids
+        // silently losing a reward when addItem cannot fit it in the inventory.
+        int slot = player.getInventory().firstEmpty();
+        if (slot < 0) return new Delivery(409, "Inventory is full");
+        player.getInventory().setItem(slot, new ItemStack(material, 1));
+        getLogger().info("Delivered " + material + " to " + login);
+        return new Delivery(200, "Delivered");
     }
 }

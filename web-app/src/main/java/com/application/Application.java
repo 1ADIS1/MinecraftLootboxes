@@ -10,16 +10,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.io.IOException;
-import java.lang.reflect.Array;
-import java.net.URI;
-import java.net.URLEncoder;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Random;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 @SpringBootApplication
 @RestController
@@ -28,6 +22,11 @@ public class Application {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private CaseService caseService;
+
+    private final Set<Integer> openingUsers = ConcurrentHashMap.newKeySet();
 
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
@@ -71,32 +70,35 @@ public class Application {
         return userRepository.findAll();
     }
 
+    @GetMapping("/api/cases")
+    public Map<String, List<CaseCatalog.Drop>> cases() {
+        return CaseCatalog.all();
+    }
+
     @PostMapping("/open-case")
-    public String onCaseOpen(HttpSession session) throws IOException, InterruptedException {
-        log.info("Case opened!");
+    public CaseCatalog.Drop onCaseOpen(@RequestParam String caseId, HttpSession session) {
+        Object sessionId = session.getAttribute("userId");
+        if (!(sessionId instanceof Integer userId)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Log in before opening a case.");
+        }
+        User user = userRepository.findById(userId).orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please log in again."));
+        if (!openingUsers.add(userId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "A case is already being opened.");
+        }
+        try {
+            CaseCatalog.Drop reward = caseService.open(user.getLogin(), caseId);
+            log.info("Delivered {} from {} case to user {}", reward.material(), caseId, userId);
+            return reward;
+        } finally {
+            openingUsers.remove(userId);
+        }
+    }
 
-        Random random = new Random();
-        List<ArmorCase> values = List.of(ArmorCase.values());
-        ArmorCase reward = values.get(random.nextInt(values.size()));
-
-        User user = userRepository.findById((int) session.getAttribute("userId")).orElseThrow();
-
-        String body =
-                "login=" + URLEncoder.encode(user.getLogin(), StandardCharsets.UTF_8)
-                        + "&password=" + URLEncoder.encode(user.getPassword(), StandardCharsets.UTF_8)
-                        + "&material=" + Bukkit.
-                        + "&amount=1";
-
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create("http://127.0.0.1:8081/give-item"))
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .POST(HttpRequest.BodyPublishers.ofString(body))
-                .build();
-
-        HttpResponse<String> response = HttpClient.newHttpClient()
-                .send(request, HttpResponse.BodyHandlers.ofString());
-
-        return response.body();
+    @ExceptionHandler(ResponseStatusException.class)
+    public org.springframework.http.ResponseEntity<Map<String, String>> requestError(ResponseStatusException error) {
+        return org.springframework.http.ResponseEntity.status(error.getStatusCode())
+                .body(Map.of("message", error.getReason() == null ? "Request failed" : error.getReason()));
     }
 
     @GetMapping("/hello")

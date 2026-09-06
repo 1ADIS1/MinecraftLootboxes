@@ -1,39 +1,22 @@
-<!DOCTYPE HTML>
-<html lang="">
+<!doctype html>
+<html lang="en">
 <head>
-    <title>Getting Started: Serving Web Content</title>
-    <meta content="text/html; charset=UTF-8" http-equiv="Content-Type"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#101310">
+  <meta name="description" content="Explore armour, weapon and tool cases. Discover every Minecraft item and its drop chance.">
+  <title>Blockvault — Find your next upgrade</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
 </head>
 <body>
-
-<p>Log into account </p>
-
-<form action="/add" method="post">
-
-    <div>
-        <label for="login">Login:</label>
-        <input id="login" name="login" required type="text">
-    </div>
-
-
-    <div>
-        <label for="password">Password:</label>
-        <input id="password" name="password" required type="text">
-    </div>
-
-    <button type="submit">Sign-up</button>
-
-    <button
-            formaction="/login"
-            formmethod="post"
-            type="submit">
-        Log in
-    </button>
-</form>
-
-<form action="/open-case" method="post">
-    <button type="submit">Open!</button>
-</form>
-
+  <header class="header">
+    <a class="brand" href="#cases" aria-label="Blockvault home"><span class="brand-mark">▣</span> BLOCK<span>VAULT</span></a>
+    <nav aria-label="Main navigation"><a href="#cases" class="nav-link">Cases</a><a href="#rarities" class="nav-link">Rarity guide</a></nav>
+    <a class="button small" href="#login" id="account-link">Log in <span>↗</span></a>
+  </header>
+  <main id="main"></main>
+  <footer><a class="brand" href="#cases">BLOCK<span>VAULT</span></a><span>A little mystery. A new adventure.</span><span>Independent Minecraft fan project.</span></footer>
+  <dialog id="result-dialog" aria-labelledby="result-title"><button class="close" aria-label="Close result">×</button><p class="eyebrow">ITEM RECEIVED!</p><div id="result-content"></div><button class="button primary close-result">Keep exploring →</button><p class="fine">Your item has been added to your Minecraft inventory.</p></dialog>
 </body>
 </html>
